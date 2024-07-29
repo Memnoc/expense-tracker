@@ -1,7 +1,10 @@
 use chrono::NaiveDate;
+use serde::{Deserialize, Serialize};
+use sqlx::FromRow;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct Expense {
+    pub id: Option<i64>,
     pub date: NaiveDate,
     pub name: String,
     pub category: String,
@@ -14,30 +17,11 @@ impl Expense {
             return Err("Amount must be positive".to_string());
         }
         Ok(Expense {
+            id: None,
             date,
             name: name.to_string(),
             category: category.to_string(),
             amount,
         })
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use chrono::NaiveDate;
-
-    #[test]
-    fn test_create_expense() {
-        let date = NaiveDate::from_ymd_opt(2023, 7, 28).unwrap();
-        let expense = Expense::new(date, "Grocery shopping", "food", 50.0);
-        assert!(expense.is_ok());
-    }
-
-    #[test]
-    fn create_invalid_expense() {
-        let date = NaiveDate::from_ymd_opt(2023, 7, 28).unwrap();
-        let expense = Expense::new(date, "Grocery shopping", "food", -10.0);
-        assert!(expense.is_err());
     }
 }

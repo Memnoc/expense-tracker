@@ -6,7 +6,13 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-chrono = "0.4.38"
 ratatui = "0.27.0"
-serde = { version = "1.0.204", features = ["derive"] }
-serde_json = "1.0.120"
+chrono = { version = "0.4.38", features = ["serde"] }
+serde = { version = "1.0.24", features = ["derive"] }
+sqlx = { version = "0.8.0", features = [
+  "runtime-tokio-native-tls",
+  "sqlite",
+  "chrono",
+  "macros",
+], default-features = false }
+tokio = { version = "1.39.2", features = ["full", "macros"] }
