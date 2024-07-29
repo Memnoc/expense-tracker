@@ -5,7 +5,7 @@ use sqlx::FromRow;
 #[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct Expense {
     pub id: Option<i64>,
-    pub date: NaiveDate,
+    pub date: String,
     pub name: String,
     pub category: String,
     pub amount: f64,
@@ -18,7 +18,7 @@ impl Expense {
         }
         Ok(Expense {
             id: None,
-            date,
+            date: date.to_string(),
             name: name.to_string(),
             category: category.to_string(),
             amount,
