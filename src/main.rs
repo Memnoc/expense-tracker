@@ -1,4 +1,6 @@
 mod db;
+#[cfg(test)]
+mod db_tests;
 mod expense;
 
 use chrono::{NaiveDate, NaiveDateTime};

@@ -71,6 +71,32 @@ impl Database {
             .fetch_all(&self.pool)
             .await
     }
+
+    pub async fn filter_by_category(&self, category: &str) -> Result<Vec<Expense>, sqlx::Error> {
+        sqlx::query_as::<_, Expense>(
+            "SELECT id, date, name, category, amount FROM expenses WHERE category = ?",
+        )
+        .bind(category)
+        .fetch_all(&self.pool)
+        .await
+    }
+
+    pub async fn filter_by_month(
+        &self,
+        year: i32,
+        month: u32,
+    ) -> Result<Vec<Expense>, sqlx::Error> {
+        let start_date = format!("{:04}-{:02}-01", year, month);
+        let end_date = format!("{:04}-{:02}-31", year, month);
+
+        sqlx::query_as::<_, Expense>(
+            "SELECT id, date, name, category, amount FROM expenses WHERE date >= ? AND date <= ?",
+        )
+        .bind(start_date)
+        .bind(end_date)
+        .fetch_all(&self.pool)
+        .await
+    }
 }
 
 #[cfg(test)]
