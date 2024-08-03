@@ -1,7 +1,7 @@
 mod db;
 mod expense;
 
-use chrono::NaiveDate;
+use chrono::{NaiveDate, NaiveDateTime};
 use db::Database;
 use expense::Expense;
 use std::io::{self, Write};
@@ -60,9 +60,12 @@ async fn add_expense(database: &Database) -> Result<(), Box<dyn std::error::Erro
 
 async fn list_expenses(database: &Database) -> Result<(), Box<dyn std::error::Error>> {
     let expenses = database.list_expenses().await?;
+    if expenses.is_empty() {
+        println!("No expenses found");
+    }
     for expense in expenses {
         println!(
-            "ID: {:?}, Date: {}, Name: {}, Category: {}, Amount: {}",
+            "ID: {:?}, Date: {}, Name: {}, Category: {}, Amount: {:.2}",
             expense.id, expense.date, expense.name, expense.category, expense.amount
         );
     }
@@ -84,7 +87,10 @@ async fn update_expense(database: &Database) -> Result<(), Box<dyn std::error::E
     let category = get_user_input("Enter new category: ")?;
     let amount = get_user_input("Enter new amount: ")?.parse::<f64>()?;
 
-    expense.date = date;
+    // Parse the date string to NaiveDate, then back to string to ensure correct format
+    let parse_date = NaiveDate::parse_from_str(&date, "%Y-%M-%d")?;
+
+    expense.date = parse_date.format("%Y-%m-%d").to_string();
     expense.name = name;
     expense.category = category;
     expense.amount = amount;

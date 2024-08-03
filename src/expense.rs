@@ -18,7 +18,7 @@ impl Expense {
         }
         Ok(Expense {
             id: None,
-            date: date.to_string(),
+            date: date.format("%Y-%m-%d").to_string(),
             name: name.to_string(),
             category: category.to_string(),
             amount,
