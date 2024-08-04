@@ -268,6 +268,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "crossterm"
+version = "0.28.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "829d955a0bb380ef178a640b91779e3987da38c9aea133b20614cfed8cdea9c6"
+dependencies = [
+ "bitflags 2.6.0",
+ "crossterm_winapi",
+ "mio 1.0.1",
+ "parking_lot",
+ "rustix",
+ "signal-hook",
+ "signal-hook-mio",
+ "winapi",
+]
+
+[[package]]
 name = "crossterm_winapi"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -362,6 +378,7 @@ name = "expense_tracker"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "crossterm 0.28.1",
  "ratatui",
  "serde",
  "sqlx",
@@ -762,6 +779,7 @@ checksum = "4569e456d394deccd22ce1c1913e6ea0e54519f577285001215d33557431afe4"
 dependencies = [
  "hermit-abi",
  "libc",
+ "log",
  "wasi",
  "windows-sys 0.52.0",
 ]
@@ -1045,7 +1063,7 @@ dependencies = [
  "bitflags 2.6.0",
  "cassowary",
  "compact_str",
- "crossterm",
+ "crossterm 0.27.0",
  "itertools",
  "lru",
  "paste",
@@ -1236,6 +1254,7 @@ checksum = "34db1a06d485c9142248b7a054f034b349b212551f3dfd19c94d45a754a217cd"
 dependencies = [
  "libc",
  "mio 0.8.11",
+ "mio 1.0.1",
  "signal-hook",
 ]
 

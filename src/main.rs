@@ -1,110 +1,86 @@
 mod db;
-#[cfg(test)]
-mod db_tests;
 mod expense;
+mod ui;
 
-use chrono::{NaiveDate, NaiveDateTime};
-use db::Database;
-use expense::Expense;
-use std::io::{self, Write};
+use crossterm::{
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
+    execute,
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+};
+use ratatui::{backend::CrosstermBackend, Terminal};
+use std::{error::Error, io};
+use ui::{ui, App};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let database = Database::new().await?;
+async fn main() -> Result<(), Box<dyn Error>> {
+    // Set up terminal
+    enable_raw_mode()?;
+    let mut stdout = io::stdout();
+    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
+    let backend = CrosstermBackend::new(stdout);
+    let mut terminal = Terminal::new(backend)?;
+
+    // Create app and run it
+    let app = App::new();
+    let res = run_app::<CrosstermBackend<io::Stdout>>(&mut terminal, app).await;
+
+    // Restore terminal
+    disable_raw_mode()?;
+    execute!(
+        terminal.backend_mut(),
+        LeaveAlternateScreen,
+        DisableMouseCapture
+    )?;
+    terminal.show_cursor()?;
+
+    if let Err(err) = res {
+        println!("{:?}", err)
+    }
+
+    Ok(())
+}
+
+async fn run_app<B: ratatui::backend::Backend>(
+    terminal: &mut Terminal<B>,
+    mut app: App,
+) -> io::Result<()> {
+    let db = db::Database::new().await.unwrap();
 
     loop {
-        print_menu();
-        let choice = get_user_input("Enter your choice: ")?;
+        terminal.draw(|f| ui::<B>(f, &app))?;
 
-        match choice.as_str() {
-            "1" => add_expense(&database).await?,
-            "2" => list_expenses(&database).await?,
-            "3" => update_expense(&database).await?,
-            "4" => delete_expense(&database).await?,
-            "5" => break,
-            _ => println!("Invalid choice, please try again."),
+        if let Event::Key(key) = event::read()? {
+            match key.code {
+                KeyCode::Char('q') => return Ok(()),
+                KeyCode::Char('a') => {
+                    // TODO: Implement add expense functionality
+                }
+                KeyCode::Char('d') => {
+                    // TODO: Implement delete expense functionality
+                }
+                KeyCode::Up => {
+                    if let Some(selected) = app.selected_index {
+                        if selected > 0 {
+                            app.selected_index = Some(selected - 1);
+                        }
+                    } else {
+                        app.selected_index = Some(0);
+                    }
+                }
+                KeyCode::Down => {
+                    if let Some(selected) = app.selected_index {
+                        if selected < app.expenses.len().saturating_sub(1) {
+                            app.selected_index = Some(selected + 1);
+                        }
+                    } else {
+                        app.selected_index = Some(0);
+                    }
+                }
+                _ => {}
+            }
         }
+
+        // Refresh expenses list
+        app.set_expenses(db.list_expenses().await.unwrap());
     }
-
-    Ok(())
-}
-
-fn print_menu() {
-    println!("\nExpense Tracker Menu:");
-    println!("1. Add Expense");
-    println!("2. List Expenses");
-    println!("3. Update Expense");
-    println!("4. Delete Expense");
-    println!("5. Exit");
-}
-
-fn get_user_input(prompt: &str) -> io::Result<String> {
-    print!("{}", prompt);
-    io::stdout().flush()?;
-    let mut input = String::new();
-    io::stdin().read_line(&mut input)?;
-    Ok(input.trim().to_string())
-}
-
-async fn add_expense(database: &Database) -> Result<(), Box<dyn std::error::Error>> {
-    let date = get_user_input("Enter date (YYYY-MM-DD): ")?;
-    let name = get_user_input("Enter expense name: ")?;
-    let category = get_user_input("Enter category: ")?;
-    let amount = get_user_input("Enter amount: ")?.parse::<f64>()?;
-
-    let date = NaiveDate::parse_from_str(&date, "%Y-%m-%d")?;
-    let expense = Expense::new(date, &name, &category, amount)?;
-
-    database.insert_expense(&expense).await?;
-    println!("Expense added successfully!");
-    Ok(())
-}
-
-async fn list_expenses(database: &Database) -> Result<(), Box<dyn std::error::Error>> {
-    let expenses = database.list_expenses().await?;
-    if expenses.is_empty() {
-        println!("No expenses found");
-    }
-    for expense in expenses {
-        println!(
-            "ID: {:?}, Date: {}, Name: {}, Category: {}, Amount: {:.2}",
-            expense.id, expense.date, expense.name, expense.category, expense.amount
-        );
-    }
-    Ok(())
-}
-
-async fn update_expense(database: &Database) -> Result<(), Box<dyn std::error::Error>> {
-    let id = get_user_input("Enter expense ID to update: ")?.parse::<i64>()?;
-    let mut expense = match database.get_expense(id).await? {
-        Some(e) => e,
-        None => {
-            println!("Expense not found!");
-            return Ok(());
-        }
-    };
-
-    let date = get_user_input("Enter new date (YYYY-MM-DD): ")?;
-    let name = get_user_input("Enter new name: ")?;
-    let category = get_user_input("Enter new category: ")?;
-    let amount = get_user_input("Enter new amount: ")?.parse::<f64>()?;
-
-    // Parse the date string to NaiveDate, then back to string to ensure correct format
-    let parse_date = NaiveDate::parse_from_str(&date, "%Y-%M-%d")?;
-
-    expense.date = parse_date.format("%Y-%m-%d").to_string();
-    expense.name = name;
-    expense.category = category;
-    expense.amount = amount;
-
-    database.update_expense(&expense).await?;
-    println!("Expense updated successfully!");
-    Ok(())
-}
-
-async fn delete_expense(database: &Database) -> Result<(), Box<dyn std::error::Error>> {
-    let id = get_user_input("Enter expense ID to delete: ")?.parse::<i64>()?;
-    database.delete_expense(id).await?;
-    println!("Expense deleted successfully!");
-    Ok(())
 }

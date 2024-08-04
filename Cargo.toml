@@ -16,3 +16,4 @@ sqlx = { version = "0.7", features = [
   "macros",
 ], default-features = false }
 tokio = { version = "1.39.2", features = ["full", "macros"] }
+crossterm = "0.28.1"
