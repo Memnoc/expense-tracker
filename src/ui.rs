@@ -1,6 +1,5 @@
 use crate::expense::Expense;
 use ratatui::{
-    backend::Backend,
     layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     text::{Line, Span, Text},
@@ -26,7 +25,7 @@ impl App {
     }
 }
 
-pub fn ui<B: Backend>(f: &mut Frame, app: &App) {
+pub fn ui(f: &mut Frame, app: &App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(1)
