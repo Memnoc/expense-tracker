@@ -10,6 +10,8 @@ use ratatui::{
 pub struct App {
     pub expenses: Vec<Expense>,
     pub selected_index: Option<usize>,
+    pub adding_expense: bool,
+    pub new_expense: Expense,
 }
 
 impl App {
@@ -17,6 +19,8 @@ impl App {
         App {
             expenses: Vec::new(),
             selected_index: None,
+            adding_expense: false,
+            new_expense: Expense::new(chrono::Local::now().date_naive(), "", "", 0.0).unwrap(),
         }
     }
 
@@ -64,11 +68,23 @@ pub fn ui(f: &mut Frame, app: &App) {
         })
         .collect();
 
-    let expenses_list = List::new(expenses)
-        .block(Block::default().borders(Borders::ALL).title("Expenses"))
-        .highlight_style(Style::default().bg(Color::DarkGray));
+    if app.adding_expense {
+        let input = Paragraph::new(format!(
+            "Date: {}\nName: {}\nCategory: {}\nAmount: {}",
+            app.new_expense.date,
+            app.new_expense.name,
+            app.new_expense.category,
+            app.new_expense.amount
+        ))
+        .block(Block::default().borders(Borders::ALL).title("New Expense"));
+        f.render_widget(input, chunks[1]);
+    } else {
+        let expenses_list = List::new(expenses)
+            .block(Block::default().borders(Borders::ALL).title("Expenses"))
+            .highlight_style(Style::default().bg(Color::DarkGray));
 
-    f.render_widget(expenses_list, chunks[1]);
+        f.render_widget(expenses_list, chunks[1]);
+    }
 
     let footer = Paragraph::new("Press 'q' to quit, 'a' to add expense, 'd' to delete expense")
         .style(Style::default().fg(Color::Gray))
