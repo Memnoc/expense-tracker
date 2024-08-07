@@ -7,11 +7,18 @@ use ratatui::{
     Frame,
 };
 
+pub enum InputMode {
+    Date,
+    Name,
+    Category,
+    Amount,
+}
 pub struct App {
     pub expenses: Vec<Expense>,
     pub selected_index: Option<usize>,
     pub adding_expense: bool,
     pub new_expense: Expense,
+    pub input_mode: InputMode,
 }
 
 impl App {
@@ -21,6 +28,7 @@ impl App {
             selected_index: None,
             adding_expense: false,
             new_expense: Expense::new(chrono::Local::now().date_naive(), "", "", 0.0).unwrap(),
+            input_mode: InputMode::Date,
         }
     }
 

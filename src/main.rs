@@ -11,23 +11,23 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use ratatui::{backend::CrosstermBackend, widgets::Dataset, Terminal};
-use std::{error::Error, io};
-use ui::{ui, App};
+use ratatui::{backend::CrosstermBackend, Terminal};
+use std::io;
+use ui::{ui, App, InputMode};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
-    // Set up terminal
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    //INFO: Set up terminal
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    // Create a DB connection
+    //INFO: Create a DB connection
     let db = Database::new().await?;
 
-    // Add a test expense
+    //INFO: Add a test expense
     let test_expense = Expense::new(
         NaiveDate::from_ymd_opt(2023, 7, 1).unwrap(),
         "Test Expense",
@@ -38,11 +38,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
     db.insert_expense(&test_expense).await?;
     println!("Added test expense");
 
-    // Create app and run it
+    //INFO: Create app and run it
     let app = App::new();
     let res = run_app::<CrosstermBackend<io::Stdout>>(&mut terminal, app, db).await;
 
-    // Restore terminal
+    //INFO: Restore terminal
     disable_raw_mode()?;
     execute!(
         terminal.backend_mut(),
@@ -75,12 +75,82 @@ async fn run_app<B: ratatui::backend::Backend>(
             match key.code {
                 KeyCode::Char('q') => return Ok(()),
                 KeyCode::Char('a') => {
-                    // TODO: Implement add expense functionality
-                    println!("Add expense functionality not implemented yet");
+                    app.adding_expense = true;
+                    app.new_expense =
+                        Expense::new(chrono::Local::now().date_naive(), "", "", 0.0).unwrap();
                 }
                 KeyCode::Char('d') => {
-                    // TODO: Implement delete expense functionality
-                    println!("Delete expense functionality not implemented yet");
+                    if let Some(selected) = app.selected_index {
+                        if let Some(expense) = app.expenses.get(selected) {
+                            if let Some(id) = expense.id {
+                                db.delete_expense(id).await.unwrap();
+                                print!("Deleted expense with id: {}", id);
+                                // Refresh the list after the deletion
+                                let expenses = db.list_expenses().await.unwrap();
+                                app.set_expenses(expenses);
+                            }
+                        }
+                    }
+                }
+                KeyCode::Char(c) => {
+                    if app.adding_expense {
+                        match app.input_mode {
+                            InputMode::Date => app.new_expense.date.push(c),
+                            InputMode::Name => app.new_expense.name.push(c),
+                            InputMode::Category => app.new_expense.category.push(c),
+                            InputMode::Amount => {
+                                if c.is_digit(10) || c == '.' {
+                                    let mut amount_str = app.new_expense.amount.to_string();
+                                    amount_str.push(c);
+                                    if let Ok(amount) = amount_str.parse() {
+                                        app.new_expense.amount = amount;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                KeyCode::Backspace => {
+                    if app.adding_expense {
+                        match app.input_mode {
+                            InputMode::Date => {
+                                app.new_expense.date.pop();
+                            }
+                            InputMode::Name => {
+                                app.new_expense.name.pop();
+                            }
+                            InputMode::Category => {
+                                app.new_expense.category.pop();
+                            }
+                            InputMode::Amount => {
+                                let mut amount_str = app.new_expense.amount.to_string();
+                                amount_str.pop();
+                                app.new_expense.amount = amount_str.parse().unwrap_or(0.0);
+                            }
+                        }
+                    }
+                }
+                KeyCode::Tab => {
+                    //INFO: cycle through input modes
+                    app.input_mode = match app.input_mode {
+                        InputMode::Date => InputMode::Name,
+                        InputMode::Name => InputMode::Category,
+                        InputMode::Category => InputMode::Amount,
+                        InputMode::Amount => InputMode::Date,
+                    };
+                }
+                KeyCode::Enter => {
+                    if app.adding_expense {
+                        db.insert_expense(&app.new_expense).await.unwrap();
+                        println!("Added new expense: {}", app.new_expense.name);
+                        app.adding_expense = false;
+                        // Refresh the list after insertion
+                        let expenses = db.list_expenses().await.unwrap();
+                        app.set_expenses(expenses);
+                    }
+                }
+                KeyCode::Esc => {
+                    app.adding_expense = false;
                 }
                 KeyCode::Up => {
                     if let Some(selected) = app.selected_index {

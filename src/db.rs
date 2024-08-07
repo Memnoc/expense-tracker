@@ -26,7 +26,7 @@ impl Database {
 
     pub async fn insert_expense(&self, expense: &Expense) -> Result<i64, sqlx::Error> {
         let result =
-            query("INSERT INTO expenses (date, name, category, amount) VALUES (?, ?, ?, ?)")
+            sqlx::query("INSERT INTO expenses (date, name, category, amount) VALUES (?, ?, ?, ?)")
                 .bind(expense.date.to_string())
                 .bind(&expense.name)
                 .bind(&expense.category)
