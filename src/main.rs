@@ -1,19 +1,21 @@
+mod app;
 mod db;
 mod expense;
 mod ui;
 
+use crate::app::{App, InputMode};
 use crate::db::Database;
-use crate::expense::Expense;
+use crate::ui::ui;
 use chrono::NaiveDate;
-
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
+use expense::Expense;
+use ratatui::backend::Backend;
 use ratatui::{backend::CrosstermBackend, Terminal};
-use std::io;
-use ui::{ui, App, InputMode};
+use std::{error::Error, io};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -58,18 +60,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-async fn run_app<B: ratatui::backend::Backend>(
+async fn run_app<B: Backend>(
     terminal: &mut Terminal<B>,
     mut app: App,
     db: Database,
 ) -> io::Result<()> {
-    // Fetch expenses once at the start
-    let expenses = db.list_expenses().await.unwrap();
-    println!("Fetched {} expenses", expenses.len());
-    app.set_expenses(expenses);
+    // // Fetch expenses once at the start
+    // let expenses = db.list_expenses().await.unwrap();
+    // println!("Fetched {} expenses", expenses.len());
+    // app.set_expenses(expenses);
 
     loop {
-        terminal.draw(|f| ui(f, &app))?;
+        terminal.draw(|f| ui::<CrosstermBackend<io::Stdout>>(f, &app))?;
 
         if let Event::Key(key) = event::read()? {
             match key.code {
@@ -84,12 +86,23 @@ async fn run_app<B: ratatui::backend::Backend>(
                         if let Some(expense) = app.expenses.get(selected) {
                             if let Some(id) = expense.id {
                                 db.delete_expense(id).await.unwrap();
-                                print!("Deleted expense with id: {}", id);
+                                // print!("Deleted expense with id: {}", id);
                                 // Refresh the list after the deletion
-                                let expenses = db.list_expenses().await.unwrap();
-                                app.set_expenses(expenses);
+                                // let expenses = db.list_expenses().await.unwrap();
+                                // app.set_expenses(expenses);
+                                app.expenses = db.list_expenses().await.unwrap();
                             }
                         }
+                    }
+                }
+                KeyCode::Enter => {
+                    if app.adding_expense {
+                        db.insert_expense(&app.new_expense).await.unwrap();
+                        println!("Added new expense: {}", app.new_expense.name);
+                        app.adding_expense = false;
+                        // Refresh the list after insertion
+                        let expenses = db.list_expenses().await.unwrap();
+                        app.set_expenses(expenses);
                     }
                 }
                 KeyCode::Char(c) => {
@@ -99,7 +112,7 @@ async fn run_app<B: ratatui::backend::Backend>(
                             InputMode::Name => app.new_expense.name.push(c),
                             InputMode::Category => app.new_expense.category.push(c),
                             InputMode::Amount => {
-                                if c.is_digit(10) || c == '.' {
+                                if c.is_ascii_digit() || c == '.' {
                                     let mut amount_str = app.new_expense.amount.to_string();
                                     amount_str.push(c);
                                     if let Ok(amount) = amount_str.parse() {
@@ -139,16 +152,6 @@ async fn run_app<B: ratatui::backend::Backend>(
                         InputMode::Amount => InputMode::Date,
                     };
                 }
-                KeyCode::Enter => {
-                    if app.adding_expense {
-                        db.insert_expense(&app.new_expense).await.unwrap();
-                        println!("Added new expense: {}", app.new_expense.name);
-                        app.adding_expense = false;
-                        // Refresh the list after insertion
-                        let expenses = db.list_expenses().await.unwrap();
-                        app.set_expenses(expenses);
-                    }
-                }
                 KeyCode::Esc => {
                     app.adding_expense = false;
                 }
@@ -176,7 +179,7 @@ async fn run_app<B: ratatui::backend::Backend>(
             // Refresh expenses list only after an action that might change it
             if matches!(key.code, KeyCode::Char('a') | KeyCode::Char('d')) {
                 let expenses = db.list_expenses().await.unwrap();
-                println!("Fetched {} expenses after action", expenses.len());
+                // println!("Fetched {} expenses after action", expenses.len());
                 app.set_expenses(expenses);
             }
         }

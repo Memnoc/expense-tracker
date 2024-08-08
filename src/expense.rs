@@ -1,6 +1,6 @@
 use chrono::NaiveDate;
 
-#[derive(Debug, sqlx::FromRow)]
+#[derive(Clone, Debug, sqlx::FromRow)]
 pub struct Expense {
     pub id: Option<i64>,
     pub date: String,
