@@ -1,5 +1,4 @@
 use crate::expense::Expense;
-use chrono::NaiveDate;
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum InputMode {
