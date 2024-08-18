@@ -6,7 +6,6 @@ mod ui;
 use crate::app::{App, InputMode};
 use crate::db::Database;
 use crate::ui::ui;
-use chrono::NaiveDate;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
     execute,
@@ -15,7 +14,7 @@ use crossterm::{
 use expense::Expense;
 use ratatui::backend::Backend;
 use ratatui::{backend::CrosstermBackend, Terminal};
-use std::{error::Error, io};
+use std::io;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
