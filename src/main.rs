@@ -30,16 +30,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let db = Database::new().await?;
 
     //INFO: Add a test expense
-    let test_expense = Expense::new(
-        NaiveDate::from_ymd_opt(2023, 7, 1).unwrap(),
-        "Test Expense",
-        "Food",
-        50.0,
-    )
-    .unwrap();
-    db.insert_expense(&test_expense).await?;
-    println!("Added test expense");
-
+    // let test_expense = Expense::new(
+    //     NaiveDate::from_ymd_opt(2023, 7, 1).unwrap(),
+    //     "Test Expense",
+    //     "Food",
+    //     50.0,
+    // )
+    // .unwrap();
+    // db.insert_expense(&test_expense).await?;
+    // println!("Added test expense");
+    //
     //INFO: Create app and run it
     let app = App::new();
     let res = run_app::<CrosstermBackend<io::Stdout>>(&mut terminal, app, db).await;
