@@ -29,18 +29,22 @@ pub fn ui<B: Backend>(f: &mut Frame, app: &App) {
     f.render_widget(title, chunks[0]);
 
     if app.adding_expense {
-        render_add_expense_form::<B>(f, app, chunks[1]);
+        render_add_expense_form(f, app, chunks[1]);
     } else {
-        render_expense_list::<B>(f, app, chunks[1]);
+        render_expense_list(f, app, chunks[1]);
     }
 
-    let footer = Paragraph::new("Press 'q' to quit, 'a' to add expense, 'd' to delete expense")
+    let mut footer_text = "Press 'q' to quit, 'a' to add expense".to_string();
+    if !app.expenses.is_empty() {
+        footer_text.push_str(", 'up/down' to select, 'd' to delete expense");
+    }
+    let footer = Paragraph::new(footer_text)
         .style(Style::default().fg(Color::Gray))
         .block(Block::default().borders(Borders::ALL));
     f.render_widget(footer, chunks[2]);
 }
 
-fn render_add_expense_form<B: Backend>(f: &mut Frame, app: &App, area: Rect) {
+fn render_add_expense_form(f: &mut Frame, app: &App, area: Rect) {
     let input_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints(
@@ -75,23 +79,26 @@ fn render_add_expense_form<B: Backend>(f: &mut Frame, app: &App, area: Rect) {
     f.render_widget(amount_input, input_chunks[3]);
 }
 
-fn render_expense_list<B: Backend>(f: &mut Frame, app: &App, area: Rect) {
+fn render_expense_list(f: &mut Frame, app: &App, area: Rect) {
     let expenses: Vec<ListItem> = app
         .expenses
         .iter()
-        .map(|expense| {
-            ListItem::new(Line::from(vec![
+        .enumerate()
+        .map(|(index, expense)| {
+            let content = Line::from(vec![
                 Span::styled(
                     format!("{:<12}", expense.date),
                     Style::default().add_modifier(Modifier::BOLD),
                 ),
                 Span::styled(format!("{:<20}", expense.name), Style::default()),
                 Span::styled(format!("{:<15}", expense.category), Style::default()),
-                Span::styled(
-                    format!("${:.2}", expense.amount),
-                    Style::default().fg(Color::Green),
-                ),
-            ]))
+                Span::styled(format!("{:<15}", expense.amount), Style::default()),
+            ]);
+            if Some(index) == app.selected_index {
+                ListItem::new(content).style(Style::default().bg(Color::DarkGray))
+            } else {
+                ListItem::new(content)
+            }
         })
         .collect();
 
@@ -99,7 +106,9 @@ fn render_expense_list<B: Backend>(f: &mut Frame, app: &App, area: Rect) {
         .block(Block::default().borders(Borders::ALL).title("Expenses"))
         .highlight_style(Style::default().bg(Color::DarkGray));
 
-    f.render_stateful_widget(expenses_list, area, &mut ListState::default());
+    let mut state = ListState::default();
+    state.select(app.selected_index);
+    f.render_stateful_widget(expenses_list, area, &mut state);
 }
 
 fn input_style(is_selected: bool) -> Style {
