@@ -27,6 +27,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     //INFO: Create a DB connection
     let db = Database::new().await?;
+    db.load_expenses_from_file("expenses.json").await.unwrap();
 
     //INFO: Add a test expense
     // let test_expense = Expense::new(
@@ -40,7 +41,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // println!("Added test expense");
     //
     //INFO: Create app and run it
-    let app = App::new();
+    let mut app = App::new();
+    app.expenses = db.list_expenses().await.unwrap();
     let res = run_app::<CrosstermBackend<io::Stdout>>(&mut terminal, app, db).await;
 
     //INFO: Restore terminal
@@ -64,17 +66,15 @@ async fn run_app<B: Backend>(
     mut app: App,
     db: Database,
 ) -> io::Result<()> {
-    // // Fetch expenses once at the start
-    // let expenses = db.list_expenses().await.unwrap();
-    // println!("Fetched {} expenses", expenses.len());
-    // app.set_expenses(expenses);
-
     loop {
-        terminal.draw(|f| ui::<CrosstermBackend<io::Stdout>>(f, &app))?;
+        terminal.draw(|f| ui::<B>(f, &app))?;
 
         if let Event::Key(key) = event::read()? {
             match key.code {
-                KeyCode::Char('q') => return Ok(()),
+                KeyCode::Char('q') => {
+                    db.save_expenses_to_file("expenses.json").await.unwrap();
+                    return Ok(());
+                }
                 KeyCode::Char('a') => {
                     app.adding_expense = true;
                     app.new_expense =
@@ -85,10 +85,6 @@ async fn run_app<B: Backend>(
                         if let Some(expense) = app.expenses.get(selected) {
                             if let Some(id) = expense.id {
                                 db.delete_expense(id).await.unwrap();
-                                // print!("Deleted expense with id: {}", id);
-                                // Refresh the list after the deletion
-                                // let expenses = db.list_expenses().await.unwrap();
-                                // app.set_expenses(expenses);
                                 app.expenses = db.list_expenses().await.unwrap();
                             }
                         }
@@ -97,11 +93,8 @@ async fn run_app<B: Backend>(
                 KeyCode::Enter => {
                     if app.adding_expense {
                         db.insert_expense(&app.new_expense).await.unwrap();
-                        println!("Added new expense: {}", app.new_expense.name);
                         app.adding_expense = false;
-                        // Refresh the list after insertion
-                        let expenses = db.list_expenses().await.unwrap();
-                        app.set_expenses(expenses);
+                        app.expenses = db.list_expenses().await.unwrap();
                     }
                 }
                 KeyCode::Char(c) => {
@@ -143,13 +136,14 @@ async fn run_app<B: Backend>(
                     }
                 }
                 KeyCode::Tab => {
-                    //INFO: cycle through input modes
-                    app.input_mode = match app.input_mode {
-                        InputMode::Date => InputMode::Name,
-                        InputMode::Name => InputMode::Category,
-                        InputMode::Category => InputMode::Amount,
-                        InputMode::Amount => InputMode::Date,
-                    };
+                    if app.adding_expense {
+                        app.input_mode = match app.input_mode {
+                            InputMode::Date => InputMode::Name,
+                            InputMode::Name => InputMode::Category,
+                            InputMode::Category => InputMode::Amount,
+                            InputMode::Amount => InputMode::Date,
+                        };
+                    }
                 }
                 KeyCode::Esc => {
                     app.adding_expense = false;
@@ -173,13 +167,6 @@ async fn run_app<B: Backend>(
                     }
                 }
                 _ => {}
-            }
-
-            // Refresh expenses list only after an action that might change it
-            if matches!(key.code, KeyCode::Char('a') | KeyCode::Char('d')) {
-                let expenses = db.list_expenses().await.unwrap();
-                // println!("Fetched {} expenses after action", expenses.len());
-                app.set_expenses(expenses);
             }
         }
     }

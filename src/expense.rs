@@ -1,6 +1,8 @@
 use chrono::NaiveDate;
+use serde::{Deserialize, Serialize};
+use sqlx::FromRow;
 
-#[derive(Clone, Debug, sqlx::FromRow)]
+#[derive(Clone, Debug, FromRow, Serialize, Deserialize)]
 pub struct Expense {
     pub id: Option<i64>,
     pub date: String,

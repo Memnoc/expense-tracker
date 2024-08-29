@@ -1,3 +1,5 @@
+use std::fs;
+
 use crate::expense::Expense;
 use sqlx::{query, query_as, sqlite::SqlitePool, Pool, Sqlite};
 
@@ -70,6 +72,29 @@ impl Database {
         query_as::<_, Expense>("SELECT id, date, name, category, amount FROM expenses")
             .fetch_all(&self.pool)
             .await
+    }
+
+    pub async fn save_expenses_to_file(
+        &self,
+        filename: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let expenses = self.list_expenses().await?;
+        let json = serde_json::to_string(&expenses)?;
+        fs::write(filename, json)?;
+        Ok(())
+    }
+
+    pub async fn load_expenses_from_file(
+        &self,
+        filename: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        if let Ok(contents) = fs::read_to_string(filename) {
+            let expenses: Vec<Expense> = serde_json::from_str(&contents)?;
+            for expense in expenses {
+                self.insert_expense(&expense).await?;
+            }
+        }
+        Ok(())
     }
 
     pub async fn filter_by_category(&self, category: &str) -> Result<Vec<Expense>, sqlx::Error> {
