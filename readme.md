@@ -1,5 +1,5 @@
 # Expense Tracker
-![Screenshot_2024-08-07-08-48-26_](https://github.com/user-attachments/assets/11eedae1-82ff-4089-9658-4bc168b9f337)
+![Screenshot_2024-08-29-06-58-44_](https://github.com/user-attachments/assets/caec4a48-ee97-46f9-8c46-f0d5daa6467a)
 
 A TUI expense tracker built with Rust and Ratatui.
 
