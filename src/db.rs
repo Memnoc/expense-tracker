@@ -68,6 +68,13 @@ impl Database {
         Ok(())
     }
 
+    pub async fn clear_expenses(&self) -> Result<(), sqlx::Error> {
+        sqlx::query("DELETE FROM expenses")
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
     pub async fn list_expenses(&self) -> Result<Vec<Expense>, sqlx::Error> {
         query_as::<_, Expense>("SELECT id, date, name, category, amount FROM expenses")
             .fetch_all(&self.pool)
@@ -128,8 +135,52 @@ impl Database {
 mod tests {
     use super::*;
     use chrono::NaiveDate;
+    use tempfile::NamedTempFile;
 
     #[tokio::test]
+
+    async fn test_save_and_laod_expenses() {
+        let db = Database::new().await.unwrap();
+
+        // Create a temporary file
+        let temp_file = NamedTempFile::new().unwrap();
+        let file_path = temp_file.path().to_str().unwrap();
+
+        // Create some test expenses
+        let expense1 = Expense::new(
+            chrono::NaiveDate::from_ymd_opt(2023, 7, 1).unwrap(),
+            "Test 1",
+            "Food",
+            50.0,
+        )
+        .unwrap();
+        let expense2 = Expense::new(
+            chrono::NaiveDate::from_ymd_opt(2023, 7, 2).unwrap(),
+            "Test 2",
+            "Transport",
+            30.0,
+        )
+        .unwrap();
+
+        db.insert_expense(&expense1).await.unwrap();
+        db.insert_expense(&expense2).await.unwrap();
+
+        // Save expenses to file
+        db.save_expenses_to_file(file_path).await.unwrap();
+
+        // Clear the Database
+        db.clear_expenses().await.unwrap();
+
+        // Load expenses from file
+        db.load_expenses_from_file(file_path).await.unwrap();
+
+        // Check if expenses were loaded correctly
+        let loaded_expenses = db.list_expenses().await.unwrap();
+        assert_eq!(loaded_expenses.len(), 2);
+        assert_eq!(loaded_expenses[0].name, "Test 1");
+        assert_eq!(loaded_expenses[1].name, "Test 2");
+    }
+
     async fn test_db_operations() {
         let db = Database::new().await.unwrap();
 

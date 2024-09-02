@@ -3,6 +3,7 @@ mod tests {
     use crate::db::Database;
     use crate::expense::Expense;
     use chrono::NaiveDate;
+    use std::fs;
 
     async fn setup() -> Database {
         Database::new().await.unwrap()
@@ -158,5 +159,49 @@ mod tests {
         let august_expenses = db.filter_by_month(2023, 8).await.unwrap();
         assert_eq!(august_expenses.len(), 1);
         assert_eq!(august_expenses[0].name, "August Expense");
+    }
+
+    #[tokio::test]
+    async fn test_save_and_load_expenses() {
+        let db = Database::new().await.unwrap();
+
+        let test_file = "test_expenses.json";
+
+        // Create some test expenses
+        let expense1 = Expense::new(
+            chrono::NaiveDate::from_ymd_opt(2023, 7, 1).unwrap(),
+            "Test 1",
+            "Food",
+            50.0,
+        )
+        .unwrap();
+        let expense2 = Expense::new(
+            chrono::NaiveDate::from_ymd_opt(2023, 7, 2).unwrap(),
+            "Test 2",
+            "Transport",
+            30.0,
+        )
+        .unwrap();
+
+        db.insert_expense(&expense1).await.unwrap();
+        db.insert_expense(&expense2).await.unwrap();
+
+        // Save expenses to file
+        db.save_expenses_to_file(test_file).await.unwrap();
+
+        // Clear the database
+        db.clear_expenses().await.unwrap();
+
+        // Load expenses from file
+        db.load_expenses_from_file(test_file).await.unwrap();
+
+        // Check if expenses were loaded correctly
+        let loaded_expenses = db.list_expenses().await.unwrap();
+        assert_eq!(loaded_expenses.len(), 2);
+        assert_eq!(loaded_expenses[0].name, "Test 1");
+        assert_eq!(loaded_expenses[1].name, "Test 2");
+
+        // Clean up the test file
+        fs::remove_file(test_file).unwrap();
     }
 }
